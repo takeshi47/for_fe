@@ -66,11 +66,10 @@ final class Notifier {
       //userごとの携帯端末(List)を設定する
       List<MobileDevice> devices = userMobileDevices.get(user);
       if (devices == null) {    //端末が登録されてない時
-        divices = new ArrayList<>();
-        //TODO:
+        devices = new ArrayList<>();
         userMobileDevices.put(user, devices);
       }
-      devices.add(device);
+      devices.add(device);  //TODO:a
     }
   }
 
@@ -80,6 +79,7 @@ final class Notifier {
    * @param message []
    */
   public void send(String user, String message) {
+
     List<MobileDevice> devices = new ArrayList<>();
 
     synchronized (lock) {
@@ -89,18 +89,88 @@ final class Notifier {
           List<String> messageList = messagesToDeliver.get(device);
           if (messageList == null) {  //メッセージリストがない時
             messageList = new ArrayList<>();
-            messagesToDeliver.put(device, messageList);
+            messagesToDeliver.put(device, messageList);//TODO:b
           }
+          messageList.add(message);
+          devices.add(device);
         }
       }
     }
 
+    for (MobileDevice device : devices ) {
+      synchronized (device) {
+        //通知メッセージがあることを待ち受け状態のスレッドに通知
+        device.notifyAll();
+      }
+    }
+  }
+
+  /**
+   * [loopForMessages() ]
+   * @param device []
+   */
+  public void loopForMessages(MobileDevice device) {
+
+    while (active) {
+      List<String> messageList;
+      synchronized (lock) {
+        messageList = messagesToDeliver.remove(device);
+      }
+      if (messageList != null) {
+        device.getListener().onNotificationReceived(messageList);
+      }
+      synchronized (device) {
+        try {
+          //通知メッセージが届くかタイムアウトまで待つ
+          device.wait(3000L);
+        } catch (InterruptedException e) {
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * [shutDown()]
+   */
+  public void shutDown() {
+    active = false;
+
+    List<MobileDevice> devices = new ArrayList<>();
+
+    synchronized (lock) {
+      messagesToDeliver.clear();
+      //keyのみを配列で返す
+      for (String user : userMobileDevices.keySet()) {
+        //keyに対応するdevice取り出してArrayListに追加する
+        for (MobileDevice device : userMobileDevices.get(user)) {
+          devices.add(device);
+        }
+      }
+      userMobileDevices.clear();
+    }
+    for (MobileDevice device : devices) {
+      synchronized (device) {
+        //待受状態のスレッドに通知
+        device.notifyAll();
+      }
+    }
   }
 }
 
 public class Tester {
+  /**
+   * main()
+   * @param args [description]
+   */
   public static void main(String[] args) {
     System.out.println("aaa");
+    createUserMobileDevice("taro", "phone");
+  }
+
+  private static void createUserMobileDevice(String user, String name) {
+    MobileDevice device = new MobileDevice(name, messageList -> System.out.println(name + ":" + messageList));  //TODO:e
+
   }
 }
 
