@@ -62,12 +62,15 @@ final class Notifier {
    * @param device []
    */
   public void register(String user, MobileDevice device) {
+
     synchronized (lock) {
+
       //userごとの携帯端末(List)を設定する
       List<MobileDevice> devices = userMobileDevices.get(user);
+
       if (devices == null) {    //端末が登録されてない時
         devices = new ArrayList<>();
-        userMobileDevices.put(user, devices);
+        userMobileDevices.put(user, devices);//TODO:b
       }
       devices.add(device);  //TODO:a
     }
@@ -83,15 +86,24 @@ final class Notifier {
     List<MobileDevice> devices = new ArrayList<>();
 
     synchronized (lock) {
-      if (userMobileDevices.containsKey(user)) {  //(user)の端末が登録されている時
+
+      if (userMobileDevices.containsKey(user)) {  //userの端末が登録されている時
         //端末ごとにメッセージリストを生成
         for (MobileDevice device : userMobileDevices.get(user)) {
           List<String> messageList = messagesToDeliver.get(device);
           if (messageList == null) {  //メッセージリストがない時
+
+            System.out.println("メッセージ初登録");
+
             messageList = new ArrayList<>();
-            messagesToDeliver.put(device, messageList);//TODO:b
+            messagesToDeliver.put(device, messageList);//TODO:c
           }
           messageList.add(message);
+
+          // for (String str : messageList) System.out.println(str);
+          for (String str : messagesToDeliver.get(device)) System.out.println("【send】" + str);
+
+          //messageのあるデバイスをリストに追加する
           devices.add(device);
         }
       }
@@ -139,6 +151,7 @@ final class Notifier {
     List<MobileDevice> devices = new ArrayList<>();
 
     synchronized (lock) {
+      //messageToDeliverの中身を空にする
       messagesToDeliver.clear();
       //keyのみを配列で返す
       for (String user : userMobileDevices.keySet()) {
@@ -147,7 +160,10 @@ final class Notifier {
           devices.add(device);
         }
       }
+
+      for (String str : userMobileDevices.keySet()) System.out.println(str);
       userMobileDevices.clear();
+      for (String str : userMobileDevices.keySet()) System.out.println(str);
     }
     for (MobileDevice device : devices) {
       synchronized (device) {
@@ -161,16 +177,37 @@ final class Notifier {
 public class Tester {
   /**
    * main()
-   * @param args [description]
+   * @param args []
    */
-  public static void main(String[] args) {
-    System.out.println("aaa");
+  public static void main(String[] args) throws InterruptedException {  //d
+
     createUserMobileDevice("taro", "phone");
+    createUserMobileDevice("taro", "tablet");
+
+    Notifier notifier = Notifier.getInstance();
+    notifier.send("taro", "you have a message");
+    Thread.sleep(500L);
+    notifier.shutDown();
+    // α
+    notifier.send("taro", "you have 2 messages.");
+    Thread.sleep(500L);
   }
 
+  /**
+   * createUserMobileDevice()
+   * @param String user
+   * @param String name
+   */
   private static void createUserMobileDevice(String user, String name) {
     MobileDevice device = new MobileDevice(name, messageList -> System.out.println(name + ":" + messageList));  //TODO:e
 
+    Notifier notifier = Notifier.getInstance();
+    notifier.register(user, device);
+
+    new Thread(() -> {
+      notifier.loopForMessages(device);
+      System.out.printf("Terminating %s's %s%n", user, name);
+    }).start();
   }
 }
 
