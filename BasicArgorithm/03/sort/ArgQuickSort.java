@@ -79,17 +79,21 @@ public class ArgQuickSort {
     //data[r]がpivotより大きい間、rを１ずつ減らしながら、
     //data[l]とdata[r]を交換していく
     while (l < r) {
+
+      System.out.println("data[l]:" + data[l] +". data[r]" + data[r]);
+      System.out.println("l:" + l + ", r:" + r);
+
       int tmp = data[l];
       data[l] = data[r];
       data[r] = tmp;
+
       while (data[l] < pivot) l++;
-      while (data[r] >= pivot) r--;
-      System.out.println("l:" + l + ", r:" + r);
+      while (data[r] > pivot) r--;
 
+      for (int element : data) System.out.print(element + ",");
+      System.out.println();
     }
-    for (int element : data) System.out.print(element + ",");
     System.out.println();
-
     //交換し終わった時点のlの値を返す
     return l;
   }
@@ -101,7 +105,7 @@ public class ArgQuickSort {
   public static void main(String[] args) {
 
     int[] data = {
-      14, 6, 9, 7, 23, 1, 5, 15
+      1,3,2,4,2,2,2
     };
 
     for (int element : data) System.out.print(element + ",");
